@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "doculytics-python"
+version = "0.1.0"
+description = ""
+authors = ["Jack W <jackweatherilt@outlook.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+beautifulsoup4 = "^4.12.2"
+flask = "^3.0.0"
+requests = "^2.31.0"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.12.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
