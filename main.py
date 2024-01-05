@@ -3,11 +3,12 @@ import requests
 from bs4 import BeautifulSoup
 import urllib.parse
 import logging
+import pprint
 
 app = Flask(__name__)
 
 # The target URL or domain you're proxying
-target_url = "https://amazon.co.uk"
+target_url = "https://jackwxyz.notion.site"
 proxy_url = "http://127.0.0.1:5000"  # Your proxy's address
 
 # Configure logging
@@ -25,6 +26,17 @@ def proxy(path):
     # Include original request headers in the proxy request
     headers = {key: value for key, value in request.headers if key != "Host"}
     headers["Host"] = urllib.parse.urlparse(target_url).netloc
+    headers["Origin"] = target_url
+    headers["Referer"] = target_url
+
+    pprint.pprint(
+        [
+            url,
+            headers,
+            request.args,
+            request.cookies,
+        ]
+    )
 
     # Send request to the target server
     if request.method == "GET":
@@ -33,11 +45,17 @@ def proxy(path):
             headers=headers,
             params=request.args,
             cookies=request.cookies,
-            stream=True,
+        )
+    elif request.method == "POST":
+        resp = requests.post(
+            url,
+            headers=headers,
+            params=request.args,
+            cookies=request.cookies,
+            data=request.form,
         )
     else:
-        # Implement other methods as needed
-        return "Method not implemented", 501
+        raise ValueError(f"Unsupported HTTP method: {request.method}")
 
     excluded_headers = [
         "content-encoding",
@@ -53,6 +71,8 @@ def proxy(path):
 
     # Logging the request
     logging.info(f"Request: {request.method} {path}")
+    if resp.status_code != 200:
+        logging.warning(f"Response: {resp.status_code} for {path}")
 
     # Handle content rewriting and cookie forwarding for HTML responses
     content_type = resp.headers.get("Content-Type", "")
@@ -79,10 +99,14 @@ def proxy(path):
         else:
             base["href"] = proxy_url
 
+        # Inject a script to set the proxy's URL as a JavaScript variable that runs
+        # after everything else
+        script_tag = soup.new_tag("script")
+        script_tag.string = f"window.CONFIG.domainBaseUrl = '{proxy_url}';"
+        soup.body.append(script_tag)
+
         # Logging the response
 
-        logging.info(f"Code: {resp.status_code} for {path}")
-        logging.info(f"Content: {soup}")
         logging.info(f"Modified and returning HTML content for {path}")
 
         return Response(str(soup), resp.status_code, headers)
